@@ -23,6 +23,7 @@ from twisted.internet import reactor, defer
 from twisted.internet.protocol import DatagramProtocol
 from twisted.python import log, failure
 
+import p2pNetwork.config as configure
 
 # This should be replaced with lookups of
 # _stun._udp.divmod.com and _stun._udp.wirlab.net
@@ -192,14 +193,23 @@ class StunProtocol(DatagramProtocol, object):
 # ============================================================================
 class StunServer(StunProtocol, object):
     """ The code for the server """
+    
+    # Load configuration
+    config = configure.ConfigData("p2pNetwork.conf")
+    myAddress      = (socket.gethostbyname(socket.gethostname()), \
+                      int(config.var['stunPort']))
+    myOtherAddress = (socket.gethostbyname(socket.gethostname()), \
+                      int(config.var['otherStunPort']))
+    _otherStunServer = config.var['otherStunServer'].split(':')
+    otherStunServer = (_otherStunServer[0], int(_otherStunServer[1]))
+    _otherStunServer = config.var['otherStunServerPort'].split(':')
+    otherStunServerPort = (_otherStunServer[0], int(_otherStunServer[1]))
+    
 
-##     def __init__(self):
-    # Initial Configuration
-    # TODO: read conf from file
-    myAddress = (socket.gethostbyname(socket.gethostname()), 3478)
-    myOtherAddress = (socket.gethostbyname(socket.gethostname()), 3479)
-    otherRdvServer = ('127.0.0.1', 3478)
-    otherRdvServerPort = ('127.0.0.1', 3479)
+##     myAddress = (socket.gethostbyname(socket.gethostname()), 3478)
+##     myOtherAddress = (socket.gethostbyname(socket.gethostname()), 3479)
+##     otherRdvServer = ('127.0.0.1', 3478)
+##     otherRdvServerPort = ('127.0.0.1', 3479)
 
     def analyseMessage(self, fromAddr):
         """Analyse the message received"""
@@ -236,13 +246,13 @@ class StunServer(StunProtocol, object):
                         self.responseType = "Binding Request"
                     elif change == 4:
                         # change the source IP --> send from/to the other server
-                        toAddr = self.otherRdvServer
+                        toAddr = self.otherStunServer
                          # RESPONSE-ADDRESS
                         listAttr = listAttr + ((0x0002, self.getPortIpList(fromAddr)),)
                         self.responseType = "Binding Request"
                     elif change == 6:
                         # change the source IP/Port --> send from/to the other server
-                        toAddr = self.otherRdvServerPort
+                        toAddr = self.otherStunServerPort
                          # RESPONSE-ADDRESS
                         listAttr = listAttr + ((0x0002, self.getPortIpList(fromAddr)),)
                         self.responseType = "Binding Request"
@@ -276,7 +286,7 @@ class StunServer(StunProtocol, object):
             # MAPPED-ADDRESS # SOURCE-ADDRESS # CHANGED-ADDRESS
             avpairs = avpairs + ((0x0001, self.getPortIpList(toAddr)),) 
             avpairs = avpairs + ((0x0004, self.getPortIpList(self.myAddress)),) 
-            avpairs = avpairs + ((0x0005, self.getPortIpList(self.otherRdvServer)),) 
+            avpairs = avpairs + ((0x0005, self.getPortIpList(self.otherStunServer)),) 
         elif self.responseType == "Binding Request":
             self.mt = 0x0001 # binding request (to other  rdv server)
         elif self.responseType == "Binding Error Response":
