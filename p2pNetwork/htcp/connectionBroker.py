@@ -1,6 +1,6 @@
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
-from p2pTCP.htcp.punchProtocol import ConnectionBroker
+from p2pNetwork.htcp.punchProtocol import ConnectionBroker
 
 
 import struct, socket, time, logging

@@ -1,6 +1,6 @@
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
-from p2pTCP.stun.stun import StunServer
+from p2pNetwork.stun.stun import StunServer
 
 
 import struct, socket, time, logging

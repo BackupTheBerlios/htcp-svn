@@ -21,7 +21,7 @@ import os
 import twisted.internet.defer as defer
 from twisted.python import log, failure
 
-import p2pTCP.stun.stun as stun
+import p2pNetwork.stun.stun as stun
 
 stun_section = {
     'servers': ('stun_servers', str, ""),

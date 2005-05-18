@@ -2,8 +2,8 @@ import sys,random
 import logging
 import time
 
-import p2pTCP.discover.stunDiscover as stun
-import p2pTCP.htcp.puncher as punch
+import p2pNetwork.discover.stunDiscover as stun
+import p2pNetwork.htcp.puncher as punch
 import twisted.internet.defer as defer
 
 from twisted.internet import reactor
