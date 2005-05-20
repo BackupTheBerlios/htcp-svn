@@ -351,14 +351,12 @@ class StunClient(StunProtocol, object):
         if self.mt == 0x0101:
             # -------------------------------------------------------------
             # binding response
-            print "got STUN response from %s"%repr(address) 
             
             dummy,family,port,addr = struct.unpack( \
                 '!ccH4s', self.avtypeList["MAPPED-ADDRESS"])
             mappedAddress = (socket.inet_ntoa(addr), port)
             
             if self.test == 1:
-                print "ciao"
                 # ********************************************************
                 # If it's in the first test (see rfc3489)
                 
@@ -490,7 +488,6 @@ class StunClient(StunProtocol, object):
             # If it's in the first test (see rfc3489)
             # UDP blocked --> exit
             self.configuration[4] = 'UDP blocked'
-            self.Stop()
             self.deferred.errback(failure.DefaultException("UDP blocked"))
             return
 
