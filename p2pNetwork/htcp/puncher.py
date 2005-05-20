@@ -20,9 +20,9 @@
 import twisted.internet.defer as defer
 from twisted.python import log, failure
 from twisted.internet import reactor
+import ConfigParser
 
 from p2pNetwork.htcp import punchProtocol
-import p2pNetwork.config as configure
 
 stun_section = {
     'servers': ('stun_servers', str, ""),
@@ -35,8 +35,10 @@ class _Puncher(punchProtocol.PunchPeer):
         super(_Puncher, self).__init__(*args, **kargs)
         
         # Load configuration
-        p2pConfig = configure.ConfigData("p2pNetwork.conf")
-        server = p2pConfig.var['ConnectionBroker'].split(':')
+        p2pConfig = ConfigParser.ConfigParser()
+        p2pConfig.read("p2pNetwork.conf")
+    
+        server = p2pConfig.get('holePunch', 'ConnectionBroker').split(':')
         server = (server[0], int(server[1]))
         self.setServer(server)
         self.privateAddr = (config[2][0], port)

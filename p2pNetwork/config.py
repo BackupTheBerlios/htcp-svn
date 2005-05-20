@@ -36,5 +36,5 @@ class ConfigData:
         f=open(filename, 'r')
         
         for line in f.readlines():
-            if not (line[0] in ('#', ' ', '\n', '\r\n')):
-                self.var[(line.split('=')[0]).strip()] = (line.split('=')[1]).strip()
+            if not (line[0] in ('#', ' ', '\n', '\r\n', '[')):
+                self.var[(line.split(':', 1)[0]).strip()] = (line.split(':', 1)[1]).strip()

@@ -22,8 +22,8 @@ import struct, socket, time, logging
 from twisted.internet import reactor, defer
 from twisted.internet.protocol import DatagramProtocol
 from twisted.python import log, failure
+import ConfigParser
 
-import p2pNetwork.config as configure
 
 # This should be replaced with lookups of
 # _stun._udp.divmod.com and _stun._udp.wirlab.net
@@ -195,14 +195,16 @@ class StunServer(StunProtocol, object):
     """ The code for the server """
     
     # Load configuration
-    config = configure.ConfigData("p2pNetwork.conf")
+    config = ConfigParser.ConfigParser()
+    config.read("p2pNetwork.conf")
+    #config = ConfigData('p2pNetwork.p2pNetwork.conf')
     myAddress      = (socket.gethostbyname(socket.gethostname()), \
-                      int(config.var['stunPort']))
+                      int(config.get('stun', 'stunPort')))
     myOtherAddress = (socket.gethostbyname(socket.gethostname()), \
-                      int(config.var['otherStunPort']))
-    _otherStunServer = config.var['otherStunServer'].split(':')
+                      int(config.get('stun', 'otherStunPort')))
+    _otherStunServer = config.get('stun', 'otherStunServer').split(':')
     otherStunServer = (_otherStunServer[0], int(_otherStunServer[1]))
-    _otherStunServer = config.var['otherStunServerPort'].split(':')
+    _otherStunServer = config.get('stun', 'otherStunServerPort').split(':')
     otherStunServerPort = (_otherStunServer[0], int(_otherStunServer[1]))
     
 
