@@ -26,7 +26,6 @@ class Solipsis(object):
 
         def _registrationMade((transport, puncher)):
             # TODO: reload config
-            print "Yesss"
             if len(sys.argv) > 2:
                 #puncher.connectByAddress(('127.0.0.1', 7035))
                 #p = punch.connectByURI(peerURI, netconf, id, transport, port)
@@ -37,7 +36,7 @@ class Solipsis(object):
             self.host, self.port = address
             #self.address = Address(self.host, self.port)
             discovery_deferred.callback((self.host, self.port))
-            print "discovery found address %s:%d" % (self.host, self.port)
+            print "discovevry found address %s:%d" % (self.host, self.port)
             
             stun.printConfiguration()
             #print stun.getConfiguration()
@@ -54,7 +53,6 @@ class Solipsis(object):
         def _fail(failure):
             # Discovery failed => try next discovery method
             print "Discovery failed:", failure.getErrorMessage()
-            print failure
             
 
         d = stun.DiscoverAddress(stunPort, reactor)

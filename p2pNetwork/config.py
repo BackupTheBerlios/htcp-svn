@@ -37,4 +37,4 @@ class ConfigData:
         
         for line in f.readlines():
             if not (line[0] in ('#', ' ', '\n', '\r\n')):
-                self.var[line.split('=')[0]] = line.split('=')[1]
+                self.var[(line.split('=')[0]).strip()] = (line.split('=')[1]).strip()
