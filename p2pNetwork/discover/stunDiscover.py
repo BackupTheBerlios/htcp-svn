@@ -20,9 +20,9 @@
 import os
 import twisted.internet.defer as defer
 from twisted.python import log, failure
+import ConfigParser
 
 import p2pNetwork.stun.stun as stun
-import p2pNetwork.config as configure
 
 stun_section = {
     'servers': ('stun_servers', str, ""),
@@ -112,8 +112,9 @@ def DiscoverAddress(port, reactor):
     #servers = params.stun_servers or '127.0.0.1'
     
     # Load configuration
-    config = configure.ConfigData("p2pNetwork.conf")
-    servers = config.var['WellKnownStunServer']
+    config = ConfigParser.ConfigParser()
+    config.read("p2pNetwork.conf")
+    servers = config.get('stun', 'WellKnownStunServer')
     
     #servers = 'localhost'
     serv_list = [(s.strip(), 3478) for s in servers.split(',')]
