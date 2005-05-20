@@ -22,6 +22,7 @@ import twisted.internet.defer as defer
 from twisted.python import log, failure
 
 import p2pNetwork.stun.stun as stun
+import p2pNetwork.config as configure
 
 stun_section = {
     'servers': ('stun_servers', str, ""),
@@ -36,30 +37,43 @@ class _StunDiscovery(stun.StunClient):
     def __init__(self, servers = ''): #, *args, **kargs):
         super(_StunDiscovery, self).__init__()
         self.servers = servers
-
+        self.attempt = 0
+        
     def Start(self, myPort, reactor, deferred):
         """
         Start listening for STUN replies.
         """
-
+        
         self.listening = reactor.listenUDP(myPort, self)
         self.myPort = myPort
+        self.reactor = reactor
         # Pass all the variables to the Protocol implemetation
         #self.setDeferred(deferred)
         #self.setTransport(self.transport)
         #self.setListenPort(myPort)
         self.listenPort = myPort
         self.deferred = deferred
+
+        self.Discover()
+
+    def Discover(self):
         
-        # Try to contact the STUN servers 
-        for host, port in self.servers:
-            def _resolved(host, port):
-                self.sendRequest((host, port))
-            def _unresolved(failure):
-                print failure.getErrorMessage()
-            d = reactor.resolve(host)
-            d.addCallback(_resolved, port)
-            d.addErrback(_unresolved)
+        d = defer.Deferred()
+        s = defer.Deferred()
+
+        # Try to contact the n STUN servers
+        host, port = self.servers[self.attempt]
+        self.attempt = self.attempt + 1
+        def _resolved(host, port):
+            print 'Try to contact Stun server:', host, port
+            s = self.sendRequest((host, port))
+            
+        def _unresolved(failure):
+            print failure.getErrorMessage()
+                
+        d = self.reactor.resolve(host)
+        d.addCallback(_resolved, port)
+        d.addErrback(_unresolved)
 
     def Stop(self):
         """
@@ -96,29 +110,32 @@ def DiscoverAddress(port, reactor):
     d = defer.Deferred()
     #params.LoadSection('stun', stun_section)
     #servers = params.stun_servers or '127.0.0.1'
-    # TODO: read server list from file
-    servers = 'localhost'
+    
+    # Load configuration
+    config = configure.ConfigData("p2pNetwork.conf")
+    servers = config.var['WellKnownStunServer']
+    
+    #servers = 'localhost'
     serv_list = [(s.strip(), 3478) for s in servers.split(',')]
     discovery = _StunDiscovery(servers=serv_list)
-    # Define timeout callback
-    def _timeout():
-        print 'timeout'
-        discovery.Stop()
-        d.errback(Exception("timed out with servers %s" % servers))
-    # Define intermediary succeed callback
+
+    def startDiscover():
+        d = defer.Deferred()
+        print 'start resend'
+        
+        d.addCallback(_succeed)
+        d.addErrback(_fail)
+        d = discovery.Discover()
+        
+    
     def _succeed(value):
         # Don't stop: continue to listen on the same port
         discovery.Stop()
-        # Registration to the rendezvous server
-##         netconf = discovery.getConfiguration()
-##         if netconf[0] == 'Yes':
-##             discovery.setServer(('127.0.0.1', 6060))
-##             discovery.record(('', netconf[2], netconf[3], ''))
         return value
+    
     def _fail(failure):
         print "Discovery result:", failure.getErrorMessage()
         d.errback(failure)
-        return failure
 
     d.addCallback(_succeed)
     d.addErrback(_fail)
