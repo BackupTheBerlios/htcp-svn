@@ -22,6 +22,7 @@ from twisted.python import log, failure
 from twisted.internet import reactor
 
 from p2pNetwork.htcp import punchProtocol
+import p2pNetwork.config as configure
 
 stun_section = {
     'servers': ('stun_servers', str, ""),
@@ -32,7 +33,12 @@ class _Puncher(punchProtocol.PunchPeer):
     
     def __init__(self, port = 0, config = (), id = '', *args, **kargs):
         super(_Puncher, self).__init__(*args, **kargs)
-        self.setServer(('127.0.0.1', 6060))
+        
+        # Load configuration
+        p2pConfig = configure.ConfigData("p2pNetwork.conf")
+        server = p2pConfig.var['ConnectionBroker'].split(':')
+        server = (server[0], int(server[1]))
+        self.setServer(server)
         self.privateAddr = (config[2][0], port)
         self.publicAddr = config[3]
         self.id = id
