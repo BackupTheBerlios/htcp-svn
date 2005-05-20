@@ -47,9 +47,8 @@ class _Puncher(punchProtocol.PunchPeer):
         """
         Called back when STUN discovered our public address.
         """
-        print "Connection made!!!!!!!"
         if not self.deferred.called:
-            print "Connection made!!!!!!!"
+            print "Connection made!"
             #self.deferred.callback((addr, int(port)))
 
     def registrationMade(self):
@@ -67,7 +66,6 @@ def HolePunching(port, reactor, config, id):
 
     # Define timeout callback
     def _timeout():
-        print 'timeout'
         puncher.Stop()
         d.errback(Exception("timed out with servers %s" % servers))
     # Define intermediary succeed callback
