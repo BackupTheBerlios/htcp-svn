@@ -156,6 +156,7 @@ class StunProtocol(DatagramProtocol, object):
             raise ValueError, "stun request too big (%d bytes)" % pktlen
         # Add header and send
         self.pkt = struct.pack('!hh16s', self.mt, pktlen, self.tid) + avstr
+        print 'Send to:', self.toAddr
         self.transport.write(self.pkt, self.toAddr)
 
     def sendPack(self):
@@ -255,6 +256,7 @@ class StunServer(StunProtocol, object):
                     elif change == 6:
                         # change the source IP/Port --> send from/to the other server
                         toAddr = self.otherStunServerPort
+                        #toAddr = self.myAddress
                          # RESPONSE-ADDRESS
                         listAttr = listAttr + ((0x0002, self.getPortIpList(fromAddr)),)
                         self.responseType = "Binding Request"
@@ -364,7 +366,7 @@ class StunClient(StunProtocol, object):
                 
                 if self.addressMatch:
                     # It's the first test 1
-                    if mappedAddress[0] == self.configuration[2] :
+                    if mappedAddress[0] == self.configuration[2][0] :
                         print ' >> test 1 (first time): address match'
                         self.addressMatch = 1
                         # No NAT !!!
@@ -375,7 +377,7 @@ class StunClient(StunProtocol, object):
                         print "    # Start test 2"
                         self.test = 2
                         listAttr = listAttr + ((0x0003, 6),) # CHANGE-REQUEST
-                        self.sendRequest(listAttr)
+                        self.sendRequest(address, listAttr)
                         return
                     else :
                         print(' >> test 1 (first time): address does not match')
@@ -463,6 +465,8 @@ class StunClient(StunProtocol, object):
         # Start timeout and send message
         self.timeout = reactor.callLater(self.stun_timeout, self._timeout)
         self.send(server, avpairs)
+        server = (server[0], 3479)
+        self.send(server, avpairs)
 
     def _timeout(self):
         """If a timeout is expired
@@ -499,7 +503,7 @@ class StunClient(StunProtocol, object):
             if self.addressMatch:
                 # Symmetric UDP Firewall --> exit
                 self.configuration[4] = 'Symmetric UDP Firewall'
-                self.gotMappedAddress(socket.inet_ntoa(addr),port)
+                self.gotMappedAddress(self.configuration[2])
                 return
             else:
                 # Start Test 1 (second time)
