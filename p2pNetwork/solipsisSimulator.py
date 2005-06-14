@@ -53,7 +53,7 @@ class Solipsis(object):
         def _fail(failure):
             # Discovery failed => try next discovery method
             stun.printConfiguration()
-            #print failure
+            print failure
             
 
         d = stun.DiscoverAddress(stunPort, reactor)
