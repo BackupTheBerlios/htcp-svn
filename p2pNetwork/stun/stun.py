@@ -156,7 +156,7 @@ class StunProtocol(DatagramProtocol, object):
             raise ValueError, "stun request too big (%d bytes)" % pktlen
         # Add header and send
         self.pkt = struct.pack('!hh16s', self.mt, pktlen, self.tid) + avstr
-        print 'Send to:', self.toAddr
+        #print 'Send to:', self.toAddr
         self.transport.write(self.pkt, self.toAddr)
 
     def sendPack(self):
@@ -199,10 +199,12 @@ class StunServer(StunProtocol, object):
     config = ConfigParser.ConfigParser()
     config.read("p2pNetwork.conf")
     #config = ConfigData('p2pNetwork.p2pNetwork.conf')
-    myAddress      = (socket.gethostbyname(socket.gethostname()), \
-                      int(config.get('stun', 'stunPort')))
-    myOtherAddress = (socket.gethostbyname(socket.gethostname()), \
-                      int(config.get('stun', 'otherStunPort')))
+##     myAddress      = (socket.gethostbyname(socket.gethostname()), \
+##                       int(config.get('stun', 'stunPort')))
+##     myOtherAddress = (socket.gethostbyname(socket.gethostname()), \
+##                       int(config.get('stun', 'otherStunPort')))
+    myAddress      = ('127.0.0.1', int(config.get('stun', 'stunPort')))
+    myOtherAddress = ('127.0.0.1', int(config.get('stun', 'otherStunPort')))
     _otherStunServer = config.get('stun', 'otherStunServer').split(':')
     otherStunServer = (_otherStunServer[0], int(_otherStunServer[1]))
     _otherStunServer = config.get('stun', 'otherStunServerPort').split(':')
@@ -341,8 +343,9 @@ class StunClient(StunProtocol, object):
         """
         
         listAttr = ()
-        self.configuration[2] = (socket.gethostbyname(socket.gethostname()), \
-                                 self.listenPort)
+##         self.configuration[2] = (socket.gethostbyname(socket.gethostname()), \
+##                                  self.listenPort)
+        self.configuration[2] = ('127.0.0.1', self.listenPort)
         
         # Check tid is one we sent and haven't had a reply to yet
         if self._pending.has_key(self.tid):
@@ -391,18 +394,20 @@ class StunClient(StunProtocol, object):
                         self.sendRequest(address, listAttr)
                         return
                 else:
-                    print ' >> test 1 (second time)'
                     # It's the second time test 1
                     if self.oldMappedAddress != mappedAddress:
                         # Symmetric NAT --> exit
+                        print ' >> test 1 (second time): address does not match'
                         self.configuration[1] = 'Symmetric'
                         self.configuration[3] = mappedAddress
                         self.gotMappedAddress(socket.inet_ntoa(addr),port)
                         return
                     else:
-                        # either behind a restricted or port restricted NAT
+                        # Either behind a restricted or port restricted NAT
                         # It does test 3
+                        print ' >> test 1 (second time): address match'
                         print("    # Start test 3")
+                        self.configuration[3] = self.oldMappedAddress
                         self.test = 3
                         listAttr = listAttr + ((0x0003, 2),) # CHANGE-REQUEST
                         self.sendRequest(address, listAttr)
@@ -462,11 +467,10 @@ class StunClient(StunProtocol, object):
         self._pending[self.tid] = (time.time(), server)
         self.stun_timeout = 0.1
         self.request = 1
+        self.server = server
         # Start timeout and send message
         self.timeout = reactor.callLater(self.stun_timeout, self._timeout)
-        self.send(server, avpairs)
-        server = (server[0], 3479)
-        self.send(server, avpairs)
+        self.send(self.server, avpairs)
 
     def _timeout(self):
         """If a timeout is expired
@@ -488,11 +492,12 @@ class StunClient(StunProtocol, object):
 
         self.stun_timeout = 0.1
         self.request = 1
-
+        
         if self.test == 1:
             # ********************************************************
             # If it's in the first test (see rfc3489)
             # UDP blocked --> exit
+            print ' >> test 1 (first time)(timeout): UDP blocked'
             self.configuration[4] = 'UDP blocked'
             self.deferred.errback(failure.DefaultException("UDP blocked"))
             return
@@ -502,11 +507,14 @@ class StunClient(StunProtocol, object):
             # If it's in the second test (see rfc3489)
             if self.addressMatch:
                 # Symmetric UDP Firewall --> exit
+                print ' >> test 2 (timeout): Symmetric UDP Firewall'
                 self.configuration[4] = 'Symmetric UDP Firewall'
                 self.gotMappedAddress(self.configuration[2])
                 return
             else:
                 # Start Test 1 (second time)
+                print ' >> test 2 (timeout)'
+                print "    # Start test 1 (second time)"
                 dummy,family,port,addr = struct.unpack( \
                     '!ccH4s', self.avtypeList["MAPPED-ADDRESS"])
                 mappedAddress = (socket.inet_ntoa(addr), port)
@@ -521,8 +529,9 @@ class StunClient(StunProtocol, object):
         # If it's in the third test (see rfc3489)
         elif  self.test == 3:
             # Port restricted
+            print ' >> test 3 (timeout): Port Restricted cone'
             self.configuration[1] = "Port Restricted cone"
-            self.gotMappedAddress(socket.inet_ntoa(addr),port)
+            self.gotMappedAddress(self.configuration[3])
             return
 
         return
