@@ -48,6 +48,8 @@ class _Puncher(punchProtocol.PunchPeer):
     def register(self, port, reactor, deferred):
         
         self.deferred = deferred
+        self.port = port
+        self.reactor = reactor
         self.listening = reactor.listenUDP(port, self)
         self.registration((self.id, self.publicAddr, self.privateAddr, ''))
         
@@ -55,8 +57,9 @@ class _Puncher(punchProtocol.PunchPeer):
         """
         Called back when STUN discovered our public address.
         """
+        print "Connection made!!!"
         if not self.deferred.called:
-            print "Connection made!"
+            pass
             #self.deferred.callback((addr, int(port)))
 
     def registrationMade(self):

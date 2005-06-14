@@ -6,9 +6,7 @@ from p2pNetwork.htcp.punchProtocol import ConnectionBroker
 import struct, socket, time, logging
 
 class MessageReceived(ConnectionBroker):
-    
-    def __init__(self):
-        pass
+    pass
         
 reactor.listenUDP(6060, MessageReceived())
 reactor.run()

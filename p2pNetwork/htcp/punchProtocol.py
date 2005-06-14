@@ -21,6 +21,7 @@ import struct, socket, time, logging
 
 from twisted.internet import reactor, defer
 from twisted.internet.protocol import DatagramProtocol
+from twisted.internet.protocol import Protocol
 from twisted.python import log, failure
 
 #
@@ -74,7 +75,7 @@ else:
 # ============================================================================
 # The Hole Punching protocol client/server methods
 # ============================================================================
-class PunchProtocol(DatagramProtocol, object):
+class PunchProtocol(DatagramProtocol, Protocol, object):
     """
     This class parses and builds hole punching messages.
     """
@@ -92,6 +93,8 @@ class PunchProtocol(DatagramProtocol, object):
         # Initialize the variables
         self._pending = {}
         super(PunchProtocol, self).__init__(*args, **kwargs)
+        self.TCPsessionStarted = 0
+        print 'TCP:', self.TCPsessionStarted
             
     def datagramReceived(self, dgram, address):
         """Called when a message is arrived"""
@@ -99,7 +102,17 @@ class PunchProtocol(DatagramProtocol, object):
         print 'Received message from:' , address
         self.parseMessage(dgram)
         self.analyseMessage(address)
-        
+
+    def dataReceived(self, data):
+        print 'dataReceived'
+        stdout.write(data)
+
+    def startedConnecting(self, connector):
+        print 'Started to connect.'
+
+    def clientConnectionFailed(self, connector, reason):
+        print 'Connection failed. Reason:', reason
+    
     def parseMessage(self, dgram):
         """Parse the message received"""
         self.avtypeList = {}
@@ -170,7 +183,11 @@ class PunchProtocol(DatagramProtocol, object):
             raise ValueError, "stun request too big (%d bytes)" % pktlen
         # Add header and send
         self.pkt = struct.pack('!hh16s', self.mt, pktlen, self.tid) + avstr
-        self.transport.write(self.pkt, self.toAddr)
+
+        if self.TCPsessionStarted:
+            pass
+        else:
+            self.transport.write(self.pkt, self.toAddr)
 
     def sendPack(self):
         """Send pack: used in retrasmission"""
@@ -178,7 +195,6 @@ class PunchProtocol(DatagramProtocol, object):
 
     def getPortIpList(self, address):
         """Return a well formatted string with the address"""
-        print address[0]
         return '%d%s' % (address[1], socket.inet_aton(address[0]))
 
     def setServer(self, server):
@@ -200,8 +216,10 @@ class ConnectionBroker(PunchProtocol, object):
     """ The code for the server """
 
     # TODO: read conf from file
-    myAddress = (socket.gethostbyname(socket.gethostname()), 3478)
-    myOtherAddress = (socket.gethostbyname(socket.gethostname()), 3479)
+##     myAddress = (socket.gethostbyname(socket.gethostname()), 3478)
+##     myOtherAddress = (socket.gethostbyname(socket.gethostname()), 3479)
+    myAddress = ('127.0.0.1', 3478)
+    myOtherAddress = ('127.0.0.1', 3479)
     otherRdvServer = ('127.0.0.1', 3478)
 
 
@@ -436,6 +454,13 @@ class PunchPeer(PunchProtocol, object):
             self.activeConnection = self.activeConnection + (privateAddress,)
             self.responseType = "Connection to peer" 
 
+            if self.protocol == 'TCP':
+                self.reactor.listenTCP(self.port, self)
+                print 'Listen on port:', self.port
+                reactor.connectTCP(publicAddress[0], publicAddress[1], self)
+                print 'Connect with:', publicAddress
+                self.TCPsessionStarted = 1
+            
             # Msg to the peer's public address
             self.sendMessage(publicAddress)
             # Msg to the peer's public address
@@ -460,8 +485,6 @@ class PunchPeer(PunchProtocol, object):
                 '!ccH4s', self.avtypeList["REQUESTOR-PUBLIC-ADDRESSE"])
             publicAddress = (socket.inet_ntoa(addr), port)
             self.activeConnection = self.activeConnection + (publicAddress,)
-            # Send msg to the peer's public address
-            self.sendMessage(publicAddress)
             
             # Add tid: it's a new connection
             self._pending[self.tid] = (time.time(), publicAddress)
@@ -473,17 +496,26 @@ class PunchPeer(PunchProtocol, object):
                 privateAddress = (socket.inet_ntoa(addr), port)
                 self.activeConnection = self.activeConnection + (privateAddress,)
                 # Send msg to the peer's private address
-                self.sendMessage(privateAddress)
+                #self.sendMessage(privateAddress)
 
+            
+            if self.protocol == 'TCP':
+                self.reactor.listenTCP(self.port, self)
+                print 'Listen on port:', self.port
+                reactor.connectTCP(publicAddress[0], publicAddress[1], self)
+                print 'Connect with:', publicAddress
+                self.TCPsessionStarted = 1
+
+            # Send msg to the peer's public address
+            self.sendMessage(publicAddress)
+            
         elif self.mt == 0x1102:
             # -------------------------------------------------------------
             # Connection to peer
-            
             self.responseType = "Connection to peer"
             
             if self.fromAddress in self.activeConnection:
                 # The connection is established
-                print "connection Made"
                 self.connectionMade()
             else:
                 # Send msg to the peer's address
@@ -558,12 +590,6 @@ class PunchPeer(PunchProtocol, object):
         for attr in listUnkAttr:
             _listUnkAttr = _listUnkAttr + ('0x%04x' % attr,)
         return _listUnkAttr
-    
-    def connectionMade(self):
-        """The connection with the peer is established"""
-
-        # TODO: send a callback signal
-        print "ConnectionMade"
 
     def connectByAddress(self, address):
         """Try to connect to a peer by his address"""
@@ -590,6 +616,9 @@ class PunchPeer(PunchProtocol, object):
     def registration(self, (userId, publicAddr, privateAddr, natType)):
         """Create and send a register message to the rendezvous server"""
         
+        # TODO: indipendent from protocol!!!
+        self.protocol = '!TCP'
+        
         listAttr = ()
         self.publicAddr = publicAddr
         self.privateAddr = privateAddr
@@ -612,6 +641,12 @@ class PunchPeer(PunchProtocol, object):
         
 ##         self.punch.setEstablishUDPsessionArgs((userId, ip, port))
 ##         self.punch.sendMessage(self.rdvIP, self.rdvPort)
+        
+    def connectionMade(self):
+        """The connection with the peer is established"""
+
+        # TODO: send a callback signal
+        print "Connection Made!!!"
 
     def setRdvServer(self, (host, port)):
         self.rdvIP, self.rdvPort = (host, port)
@@ -628,3 +663,6 @@ class PunchPeer(PunchProtocol, object):
         print "request", _self.request,
         print self.request
         self = _self
+
+    def setReactor(self, reactor):
+        self.reactor = reactor
