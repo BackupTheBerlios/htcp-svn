@@ -6,7 +6,7 @@ from impacket import ImpactPacket
 from impacket import ImpactDecoder
 
 class Spoofer:
-    """Send a spoofed TCP packet
+    """Send a spoofed TCP packet and listen to spoof packets
     USAGE: IP-destination port IP-source SYNno ACKno"""
 
     def __init__(self):
@@ -60,17 +60,17 @@ class Spoofer:
 
         # Instantiate an IP packets decoder.
         # As all the packets include their IP header, that decoder only is enough.
-##         decoder = ImpactDecoder.IPDecoder()
+        decoder = ImpactDecoder.IPDecoder()
 
-##         while 1:
-##             packet = self.s.recvfrom(4096)[0]
-##             # Packet received. Decode and display it.
-##             packet = decoder.decode(packet)
-##             print 'source:', packet.get_ip_src()
-##             #print packet.get_ip_src(), packet.child().get_th_sport()
-##             if isinstance(packet.child(),ImpactPacket.TCP)  and \
-##                    packet.child().get_th_sport() > 50000:
-##                 self._sniffed(packet)
+        while 1:
+            packet = self.s.recvfrom(4096)[0]
+            # Packet received. Decode and display it.
+            packet = decoder.decode(packet)
+            print 'source:', packet.get_ip_src()
+            #print packet.get_ip_src(), packet.child().get_th_sport()
+            if isinstance(packet.child(),ImpactPacket.TCP)  and \
+                   packet.child().get_th_sport() > 50000:
+                self._sniffed(packet)
 
     def _bind(self, shost):
         HOST = shost    # Symbolic name meaning the local host
