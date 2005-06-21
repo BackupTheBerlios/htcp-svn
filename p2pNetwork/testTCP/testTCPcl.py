@@ -7,9 +7,13 @@ import sys
 import socket
 import time
 
-import p2pNetwork.testTCP.sniff as sniffer
+import p2pNetwork.testTCP.sniffy as sniffer
+import p2pNetwork.testTCP.udpSniffer as udp_sniffer
 
 class Echo(Protocol):
+    """A test for TCP connection:
+    - a normal TCP connection
+    - with a thread to simulate the simultaneous TCP initiation"""
         
     def dataReceived(self, data = ''):
         stdout.write(data)
@@ -42,16 +46,18 @@ class EchoClientFactory(ClientFactory):
         print 'Connection failed. Reason:', reason
         reactor.stop()
 
+# Start to listen for UDP connection
+#reactor.listenUDP(9999, udp_sniffer.UDP_factory())
+udp_obj = udp_sniffer.UDP_factory()
 
-
-#if __name__ == '__main__':
-    
 # Start to sniff packets (run method in thread)
 argv = ('', 'eth0', 'tcp port 50007')
-print 'Start thread'
-reactor.callInThread(sniffer.sniff, argv)
-#time.sleep(1)
+sniffer.sniff(argv, udp_obj)
+
+# Wait a little bit...
+time.sleep(2)
 
 # Start TCP connection
-reactor.connectTCP('10.193.167.111', 50007, EchoClientFactory(), 30, ('192.168.1.109', 50007))
+print 'Start TCP connection'
+reactor.connectTCP('10.193.167.86', 50007, EchoClientFactory(), 30, ('192.168.1.109', 50007))
 reactor.run()

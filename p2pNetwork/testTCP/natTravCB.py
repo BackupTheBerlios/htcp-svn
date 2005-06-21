@@ -14,6 +14,7 @@ from impacket import ImpactPacket
 
 
 class ConnectionBroker(DatagramProtocol):
+    """Listen on UDP port for the two SYNs from peers"""
 
     def __init__(self):
         self.t = [0, 0]
@@ -34,6 +35,7 @@ class ConnectionBroker(DatagramProtocol):
 
 
 class Broker(Protocol):
+    """Broke the NAT firewall sending spoofed packet"""
 
     def __init__(self):
 
@@ -92,6 +94,7 @@ class Broker(Protocol):
             self.s.sendto(ip.get_packet(), (dhost, dport))
 
     def connection(self):
+        """DEPRECATED"""
         RHOST = '10.193.161.93'    # The remote host
         RPORT = 50007              # The same port as used by the server
 
@@ -104,12 +107,14 @@ class Broker(Protocol):
         print 'connection made'
 
     def _sniffed(self, packet):
-            print 'Packet sniffed'
-            print packet
-            print 'SYNn:', packet.child().get_th_seq()
-            print 'SYN:', packet.child().get_SYN()
-            print 'ACK:', packet.child().get_ACK()
-            print 'ACKn:', packet.child().get_th_ack()
+        """Print infos on sniffed packet"""
+        
+        print 'Packet sniffed'
+        print packet
+        print 'SYNn:', packet.child().get_th_seq()
+        print 'SYN:', packet.child().get_SYN()
+        print 'ACK:', packet.child().get_ACK()
+        print 'ACKn:', packet.child().get_th_ack()
 
 ## if __name__ == '__main__':
 ##     b = Broker()

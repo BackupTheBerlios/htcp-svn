@@ -9,6 +9,7 @@ import struct
 
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor
+import p2pNetwork.testTCP.spoof as spoof
 
 protocols={socket.IPPROTO_TCP:'tcp',
            socket.IPPROTO_UDP:'udp',
@@ -26,8 +27,10 @@ def decode_ip_packet(s):
   d['ttl']=ord(s[8])
   d['protocol']=ord(s[9])
   d['checksum']=socket.ntohs(struct.unpack('H',s[10:12])[0])
-  d['source_address']=pcap.ntoa(struct.unpack('i',s[12:16])[0])
-  d['destination_address']=pcap.ntoa(struct.unpack('i',s[16:20])[0])
+  #d['source_address']=pcap.ntoa(struct.unpack('i',s[12:16])[0])
+  #d['destination_address']=pcap.ntoa(struct.unpack('i',s[16:20])[0])
+  d['source_address']='?'
+  d['destination_address']='?'
   if d['header_len']>5:
     d['options']=s[20:4*(d['header_len']-5)]
   else:
@@ -48,7 +51,7 @@ def dumphex(s):
   print '    %s' % string.join(bytes[(i+1)*16:],' ')
     
 
-def print_packet(pktlen, data, timestamp):
+def print_packet(timestamp, data, arg=''):
   if not data:
     return
 
@@ -71,38 +74,23 @@ def print_packet(pktlen, data, timestamp):
 
 
 
-class UDP_factory(DatagramProtocol):
-  
-  def datagramReceived(self, data, (host, port)):
-    print "received %r from %s:%d" % (data, host, port)
 
-
-  def send_SYN_to_ConnectionBroker(self, pktlen, data, timestamp):
-    if not data:
-      return
-    
-    if data[12:14]=='\x08\x00':
-      decoded=decode_ip_packet(data[14:])
-      
-      # Send SYN to connection broker via UDP protocol
-      host = '10.193.163.246'
-      port = 9999
-
-      print "Send SYN to Connection Broker"
-      reactor.listenUDP(50007, self)
-      self.transport.write("%ld"%decoded['synno'], (host, port))
-      #reactor.stop()
-        
       
 #if __name__=='__main__':
-def sniff(argv):
+def sniff(argv, udp_obj):
+  """Sniff packets using pcap libriry
+  and call the method to send the SYN nomber to hte peer
+  or to Connection Broker"""
+ 
   sys.argv = argv
   if len(sys.argv) < 3:
     print 'usage: sniff.py <interface> <expr>'
     sys.exit(0)
+    
+  dev = sys.argv[1]
+  #p = pcap.pcap(dev)
   p = pcap.pcapObject()
   #dev = pcap.lookupdev()
-  dev = sys.argv[1]
   net, mask = pcap.lookupnet(dev)
   # note:  to_ms does nothing on linux
   p.open_live(dev, 1600, 0, 100)
@@ -113,13 +101,23 @@ def sniff(argv):
   # down cleanly can result in the interface not being taken out of promisc.
   # mode
   #p.setnonblock(1)
-  udp_obj = UDP_factory()
+  #udp_obj = UDP_factory()
+  #reactor.run()
+  udp_obj.punchHole()
   try:
     while 1:
-      #p.dispatch(1, print_packet)
+    #for ts, pkt in p:
+    #for i in range(1,9):
+      #print i
+      #print_packet(ts, pkt)
+      #p.dispatch(print_packet, -1)
       p.dispatch(1, udp_obj.send_SYN_to_ConnectionBroker)
+      #p.loop(1, udp_obj.send_SYN_to_ConnectionBroker)
+      
+      #udp_obj.send_SYN_to_ConnectionBroker(ts, pkt)
+      #break
+      print 'break'
       break
-
     # specify 'None' to dump to dumpfile, assuming you have called
     # the dump_open method
     #  p.dispatch(0, None)
@@ -136,6 +134,3 @@ def sniff(argv):
     print '%d packets received, %d packets dropped, %d packets dropped by interface' % p.stats()
   
 
-
-
-#reactor.run()
